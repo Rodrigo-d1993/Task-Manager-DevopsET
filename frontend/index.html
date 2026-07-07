@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - EFT DevOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Task Manager</h1>
+        <p class="subtitle">EFT DevOps · ISY1101</p>
+
+        <form id="task-form">
+            <input type="text" id="title" placeholder="Título de la tarea" required maxlength="120">
+            <input type="text" id="description" placeholder="Descripción" maxlength="500">
+            <select id="priority">
+                <option value="LOW">Baja</option>
+                <option value="MEDIUM" selected>Media</option>
+                <option value="HIGH">Alta</option>
+            </select>
+            <input type="date" id="dueDate">
+            <button type="submit">Agregar tarea</button>
+        </form>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Todas</button>
+            <button class="filter-btn" data-filter="pending">Pendientes</button>
+            <button class="filter-btn" data-filter="completed">Completadas</button>
+        </div>
+
+        <ul id="task-list"></ul>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
