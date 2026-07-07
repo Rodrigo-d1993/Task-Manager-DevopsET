@@ -39,8 +39,6 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    outputs:
-      registry: ${{ steps.ecr-login.outputs.registry }}
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -103,7 +101,7 @@ jobs:
         with:
           task-definition: task-def-backend.json
           container-name: ${{ secrets.CONTAINER_NAME_BACKEND }}
-          image: ${{ needs.build-and-push.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}
+          image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}
 
       - name: Renderizar nueva Task Definition (Frontend)
         id: render-frontend
@@ -111,7 +109,7 @@ jobs:
         with:
           task-definition: task-def-frontend.json
           container-name: ${{ secrets.CONTAINER_NAME_FRONTEND }}
-          image: ${{ needs.build-and-push.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}
+          image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}
 
       - name: Desplegar Backend en ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
