@@ -57,12 +57,14 @@ Cada tarea tiene: `title` (obligatorio), `description`, `completed`, `priority` 
 
 ## CI/CD
 
-El pipeline en `.github/workflows/ci-cd.yml` ejecuta automáticamente:
-1. **Build**: compila el backend con Maven.
-2. **Test**: ejecuta pruebas unitarias (JUnit 5, con H2 en memoria).
-3. **Push**: construye las imágenes Docker y las publica en Amazon ECR.
-4. **Deploy**: actualiza los servicios en el clúster ECS Fargate.
+El pipeline en `.github/workflows/ci-cd.yml` ejecuta automáticamente en cada push a `main`:
+1. **Test**: ejecuta pruebas unitarias del backend (JUnit 5).
+2. **Build**: compila el backend con Maven y construye las imágenes Docker de backend y frontend.
+3. **Push**: publica ambas imágenes en Amazon ECR, etiquetadas con el SHA del commit y `latest`.
+4. **Deploy**: toma la task definition activa de cada servicio ECS, la actualiza con la nueva imagen y despliega la nueva revisión, esperando a que el servicio quede estable (`wait-for-service-stability`).
+
+El pipeline requiere las siguientes Repository Variables configuradas en GitHub (Settings → Secrets and variables → Actions → Variables): `ECS_CLUSTER`, `ECS_SERVICE_BACKEND`, `ECS_SERVICE_FRONTEND`, `ECS_TASK_DEF_BACKEND`, `ECS_TASK_DEF_FRONTEND`, `CONTAINER_NAME_BACKEND`, `CONTAINER_NAME_FRONTEND`.
 
 ## Despliegue en AWS
 
-Ver `docs/informe.docx` para el detalle de la arquitectura en la nube (VPC, subredes, Security Groups, ECS Fargate) y las decisiones de configuración y seguridad tomadas.
+La plataforma corre en un clúster **ECS Fargate**, con un servicio independiente para backend y frontend. El detalle de la arquitectura (VPC, subredes, Security Groups, roles IAM) se documentará en el informe (pendiente).

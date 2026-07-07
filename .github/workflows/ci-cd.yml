@@ -39,6 +39,8 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.ecr-login.outputs.registry }}
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -73,8 +75,56 @@ jobs:
           docker push $REGISTRY/$ECR_FRONTEND_REPO:${{ github.sha }}
           docker push $REGISTRY/$ECR_FRONTEND_REPO:latest
 
-      - name: Resumen
+  deploy:
+    name: Deploy to Amazon ECS Fargate
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Descargar Task Definitions Activas de AWS
         run: |
-          echo "Imágenes publicadas en ECR:"
-          echo "- $REGISTRY/$ECR_BACKEND_REPO:latest"
-          echo "- $REGISTRY/$ECR_FRONTEND_REPO:latest"
+          aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEF_BACKEND }} --query taskDefinition > task-def-backend.json
+          aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEF_FRONTEND }} --query taskDefinition > task-def-frontend.json
+
+      - name: Renderizar nueva Task Definition (Backend)
+        id: render-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-backend.json
+          container-name: ${{ secrets.CONTAINER_NAME_BACKEND }}
+          image: ${{ needs.build-and-push.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}
+
+      - name: Renderizar nueva Task Definition (Frontend)
+        id: render-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-frontend.json
+          container-name: ${{ secrets.CONTAINER_NAME_FRONTEND }}
+          image: ${{ needs.build-and-push.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}
+
+      - name: Desplegar Backend en ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-backend.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_BACKEND }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Desplegar Frontend en ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-frontend.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_FRONTEND }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
